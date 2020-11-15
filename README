@@ -1,0 +1,8 @@
+============= Interface Radio ======================
+	
+	Le build: clean install
+	Profile dev: conf_dev
+	
+	La class main: RadioInterface.java
+	
+	Exécution: dans eclipse aller dans Run Configurations > Arguments: mettre dans "VM arguments" : -Dlog4j.configuration=file:"chemin_fichier_log4j"

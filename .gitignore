@@ -1,0 +1,14 @@
+target
+target/*
+target/**
+.classpath
+.project
+.settings
+bin
+.metadata
+tmp
+.idea/
+*.iml
+*.orig
+activemq-data
+*.episode
