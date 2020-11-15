@@ -32,7 +32,7 @@ public class GameHttpClient {
     int port = Integer.parseInt(properties.getProperty(Const.SERVER_PORT, "5000"));
     try (var socket = new Socket(url, port)) {
       var in = new Scanner(socket.getInputStream(), StandardCharsets.US_ASCII);
-      var out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.US_ASCII), true);
+      var out = new PrintWriter(socket.getOutputStream(),true, StandardCharsets.US_ASCII);
 
       Game.getInstance().init(properties);
       try {
