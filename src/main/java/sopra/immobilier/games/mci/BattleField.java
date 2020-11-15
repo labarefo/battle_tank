@@ -104,7 +104,7 @@ public class BattleField {
 
     List<IAction> actions = new ArrayList<>();
     DeplacementEnum direction = findDirection(moi.getPosition());
-    rechercheActions(moi.getPosition(), actions, direction == null ? direction : DeplacementEnum.DROITE);
+    rechercheActions(actions, moi.getPosition(), direction == null ? direction : DeplacementEnum.DROITE);
     // recherche des actions à faires
     if(actions.isEmpty()){
       return response;
@@ -152,14 +152,8 @@ public class BattleField {
     }
     return null;
   }
-  /**
-   * @param hasTir
-   * @return
-   */
-  private void rechercheActions(Position position, List<IAction> actions, DeplacementEnum direction) {
-    if(actions.size() > 1){
-      return;
-    }
+
+  private void tirer(Position position, List<IAction> actions) {
     List<Joueur> aDroite = ciblesDroite(position, adversaires);
     List<Joueur> aGauche = ciblesGauche(position, adversaires);
 
@@ -186,6 +180,19 @@ public class BattleField {
     if(tir != null){
       actions.add(tir);
     }
+  }
+
+
+  /**
+   * @param position
+   * @param actions
+   * @param direction
+   */
+  private void rechercheActions(List<IAction> actions, Position position, DeplacementEnum direction) {
+    if(actions.size() > 1){
+      return;
+    }
+    tirer(position, actions);
     if(actions.size() > 1){
       return;
     }
@@ -195,126 +202,151 @@ public class BattleField {
         if(directionDroite(actions, position)){
           actions.add(DeplacementEnum.DROITE);
         }else {
-          // je cherche la direction dans laquelle je suis sensé allé
-          DeplacementEnum deplacement = findDirection(position);
-          if(deplacement == null){
-            // je ne peux aller dans aucune direction
-            if (moi.getBonus() != null){// possibilité d'utiliser un bonus ?
-              // deployer le bonus
-
-            }else {
-              if(actions.stream().allMatch(a -> DeplacementEnum.fromCode(a.getCode()) == null)){
-                // je fait un double deplacement
-              }else {
-                // ca improbable ==> je tire à l'aveugle
-                actions.add(TirEnum.DROITE);
-              }
-            }
-          }else {
-            rechercheActions(position, actions, deplacement);
-          }
+          explorer(actions, position);
         }
         break;
       case GAUCHE:
-
+        if(directionGauche(actions, position)){
+          actions.add(DeplacementEnum.GAUCHE);
+        }else {
+          explorer(actions, position);
+        }
         break;
       case HAUT:
-
+        if(directionHaut(actions, position)){
+          actions.add(DeplacementEnum.HAUT);
+        }else {
+          explorer(actions, position);
+        }
         break;
       case BAS:
-
+        if(directionBas(actions, position)){
+          actions.add(DeplacementEnum.BAS);
+        }else {
+          explorer(actions, position);
+        }
         break;
     }
-//    // à droite
-//    if(position.isDroitePossible(maxLigne)){
-//      position.deplacementDroite();
-//      if(!accessible(position)){
-//        position.deplacementGauche();
-//      }else {
-//        if(!isDanger(position)){
-//          actions.add(DeplacementEnum.DROITE);
-//          rechercheActions(position, actions);
-//          return;
-//        }else {
-//          // je retourne
-//          position.deplacementGauche();
-//        }
-//      }
-//    }
-//    // à gauche
-//    if(position.isGauchePossible()){
-//      position.deplacementGauche();
-//      if(!accessible(position)){
-//        position.deplacementDroite();
-//      }else {
-//        if(!isDanger(position)){
-//          actions.add(DeplacementEnum.GAUCHE);
-//          rechercheActions(position, actions);
-//          return;
-//        }else {
-//          // je retourne
-//          position.deplacementDroite();
-//        }
-//      }
-//    }
-//    // en haut
-//    if(position.isHautPossible()){
-//      position.deplacementHaut();
-//      if(!accessible(position)){
-//        position.deplacementBas();
-//      }else {
-//        if(!isDanger(position)){
-//          actions.add(DeplacementEnum.HAUT);
-//          rechercheActions(position, actions);
-//          return;
-//        }else {
-//          // je retourne
-//          position.deplacementBas();
-//        }
-//      }
-//    }
-//    // en bas
-//    if(position.isBasPossible(maxColonne)){
-//      position.deplacementBas();
-//      if(!accessible(position)){
-//        position.deplacementHaut();
-//      }else {
-//        if(!isDanger(position)){
-//          actions.add(DeplacementEnum.HAUT);
-//          rechercheActions(position, actions);
-//          return;
-//        }else {
-//          // je retourne
-//          position.deplacementHaut();
-//        }
-//      }
-//    }
-
 
 
   }
 
+
+  private void explorer(List<IAction> actions, Position position) {
+    // je cherche la direction dans laquelle je suis sensé allé
+    DeplacementEnum deplacement = findDirection(position);
+    if(deplacement == null){
+      // je ne peux aller dans aucune direction
+      if (moi.getBonus() != null){// possibilité d'utiliser un bonus ?
+        // deployer le bonus
+
+      }else {
+        if(actions.stream().allMatch(a -> DeplacementEnum.fromCode(a.getCode()) == null)){
+          // je fait un double deplacement
+        }else {
+          // cela est improbable ==> mais je tire à l'aveugle
+          actions.add(TirEnum.DROITE);
+        }
+      }
+    }else {
+      rechercheActions(actions, position, deplacement);
+    }
+  }
+  /**
+   * J'essaye de me deplacer à droite
+   *
+   * @param actions
+   * @param position
+   * @return
+   */
   private boolean directionDroite(List<IAction> actions, Position position) {
-    boolean result = false;
     // à droite
     if(position.isDroitePossible(maxLigne)){
       position.deplacementDroite();
-      if(accessible(position)){
-        // je regarde si un adversaire pourrait se deplacer et ensuite m'attager
-        Set<DirectionEnum> directionsAttaque = attaqueAdverses(position);
+      boolean result = controleDeplacement(position, DeplacementEnum.DROITE);
+      if(!result){
         // je retourne à la position initiale
         position.deplacementGauche();
-        if(directionsAttaque.isEmpty()){
-          result = true;
-        }else {
-          if(directionsAttaque.size() > 1){
-            // attaque possible dans les 2 directions
-            result = false;
-          }else{
-            // attaque possible selement dans une direction
-            DirectionEnum dir = directionsAttaque.iterator().next();
-            result = DeplacementEnum.DROITE.getDirection() != dir;
-          }
+      }
+    }
+    return false;
+  }
+
+  /**
+   * @param actions
+   * @param position
+   * @return
+   */
+  private boolean directionGauche(List<IAction> actions, Position position) {
+    // à gauche
+    if(position.isGauchePossible()){
+      position.deplacementGauche();
+      boolean result = controleDeplacement(position, DeplacementEnum.GAUCHE);
+      if(!result){
+        // je retourne à la position initiale
+        position.deplacementDroite();
+      }
+    }
+    return false;
+  }
+
+  /**
+   * @param actions
+   * @param position
+   * @return
+   */
+  private boolean directionHaut(List<IAction> actions, Position position) {
+    // à gauche
+    if(position.isHautPossible()){
+      position.deplacementHaut();
+      boolean result = controleDeplacement(position, DeplacementEnum.HAUT);
+      if(!result){
+        // je retourne à la position initiale
+        position.deplacementBas();
+      }
+    }
+    return false;
+  }
+
+  /**
+   * @param actions
+   * @param position
+   * @return
+   */
+  private boolean directionBas(List<IAction> actions, Position position) {
+    // à gauche
+    if(position.isBasPossible(maxColonne)){
+      position.deplacementBas();
+      boolean result = controleDeplacement(position, DeplacementEnum.BAS);
+      if(!result){
+        // je retourne à la position initiale
+        position.deplacementHaut();
+      }
+    }
+    return false;
+  }
+
+  /**
+   * @param position
+   * @param deplacement
+   * @return
+   */
+  private boolean controleDeplacement(Position position, DeplacementEnum deplacement) {
+
+    boolean result = false;
+    if(accessible(position)){
+      // je regarde si un adversaire pourrait se deplacer et ensuite m'attager
+      Set<DirectionEnum> directionsAttaque = attaqueAdverses(position);
+      if(directionsAttaque.isEmpty()){
+        result = true;
+      }else {
+        if(directionsAttaque.size() > 1){
+          // attaque possible dans les 2 directions
+          result = false;
+        }else{
+          // attaque possible selement dans une direction
+          DirectionEnum dir = directionsAttaque.iterator().next();
+          result = deplacement.getDirection() != dir;
         }
       }
     }
@@ -405,121 +437,32 @@ public class BattleField {
     return actions.stream().anyMatch(a -> a.getCode().equals(tir.getCode()));
   }
 
-//  private DeplacementEnum deplacer(Position position) {
-//    if(position.isDroitePossible(maxLigne)) {
-//      // je me deplace à droite
-//      position.deplacementDroite();
-//      if(!accessible(position) || isDanger(position)){
-//        // je retourne
-//        position.deplacementGauche();
-//      } else {
-//        return DeplacementEnum.DROITE;
-//      }
-//    }
-//    if(position.isGauchePossible()) {
-//      // je me deplace à gauche
-//      position.deplacementGauche();
-//      if(!accessible(position) || isDanger(position)){
-//        // je retourne
-//        position.deplacementDroite();
-//      } else {
-//        return DeplacementEnum.GAUCHE;
-//      }
-//    }
-//    if(position.isHautPossible()) {
-//      // je me deplace en haut
-//      position.deplacementHaut();
-//      if(!accessible(position) || isDanger(position)){
-//        // je retourne
-//        position.deplacementBas();
-//      }else {
-//        return DeplacementEnum.HAUT;
-//      }
-//    }
-//    if(position.isBasPossible(maxColonne)) {
-//      // je me deplace en bas
-//      position.deplacementBas();
-//      if(!accessible(position) || isDanger(position)){
-//        // je retourne
-//        position.deplacementHaut();
-//      }else {
-//        return DeplacementEnum.BAS;
-//      }
-//    }
-//    return null;
-//  }
-
+  /**
+   * @param position
+   * @return
+   */
   private boolean accessible(Position position) {
     return carte[position.getX()][position.getY()] == 0;
   }
 
-//  private TirEnum definirDirectionTir(Position position, Joueur target) {
-//    if (target.getPosition().getX() == position.getX()){
-//      // tire sur la colonne
-//      if(target.getPosition().getY() > position.getY()){
-//        // je tire à en haut
-//        return TirEnum.HAUT;
-//      }
-//      // je tire en bas
-//      return TirEnum.BAS;
-//    }
-//    // tire sur la ligne
-//    if(target.getPosition().getY() > position.getX()){
-//      // je tire à droite
-//      return TirEnum.DROITE;
-//    }
-//    // je tire à gauche
-//    return TirEnum.GAUCHE;
-//  }
-
-//  private List<Joueur> rechercheCible(Position maPosition, List<Joueur> adversaires) {
-//    List<Joueur> aDroite = ciblesDroite(maPosition, adversaires);
-//    List<Joueur> aGauche = ciblesGauche(maPosition, adversaires);
-//    List<Joueur> enHaut = ciblesHaut(maPosition, adversaires);
-//    List<Joueur> enBas = ciblesBas(maPosition, adversaires);
-//    List<Joueur> cibles = new ArrayList<>();
-//    if(!aDroite.isEmpty() && !aGauche.isEmpty() && (!enHaut.isEmpty() || !enBas.isEmpty())){
-//      return cibles;
-//    }
-//    if(!aDroite.isEmpty() && !aGauche.isEmpty() && (!enHaut.isEmpty() || !enBas.isEmpty())){
-//      return cibles;
-//    }
-//    if(aDroite.size() > 0){
-//      cibles.add(aDroite.get(0));
-//    }
-//    Joueur j1 = null;
-//    if(enLigne.size() == 1){
-//      j1 = enLigne.get(0);
-//    }
-//    Joueur j2 = null;
-//    List<Joueur> enColonne = ciblesEnColonne(maPosition, adversaires);
-//    if(enColonne.size() == 1){
-//      j2 = enColonne.get(0);
-//    }
-//    Joueur[] cibles = new Joueur[2];
-//    if(j1 != null){
-//      cibles[0] = j1;
-//      if(j2 != null){
-//        cibles[1] = j2;
-//      }
-//    }else if(j2 != null){
-//      cibles[0] = j2;
-//    }
-//    if(cibles.length > 0){
-//      Arrays.sort(cibles, Comparator.comparingInt(Joueur::getVies));
-//      // je tire sur le plus vulnérable :) ==> qui a moins de vie
-//      Joueur target = cibles[0];
-//      return target;
-//    }
-//    return null;
-//  }
-
+  /**
+   * @param i
+   * @param j
+   * @return
+   */
   private int[] trier(int i, int j){
     int[] arr = {i, j};
     Arrays.sort(arr);
     return arr;
   }
 
+  /**
+   * @param axe
+   * @param p1
+   * @param p2
+   * @param isLigne
+   * @return
+   */
   private boolean isAccessible(int axe, int p1, int p2, boolean isLigne) {
     int distance = 0;
     int[] indexes = trier(p1, p2);
@@ -554,6 +497,10 @@ public class BattleField {
     return null;
   }
 
+  /**
+   * @param joueurs
+   * @return
+   */
   private List<Joueur> buildJoueurs(String joueurs) {
     String[] data = joueurs.split(";");
     if (data.length < _NOMBRE_PROPRIETE) {
@@ -579,7 +526,7 @@ public class BattleField {
     return gamers;
   }
 
-  // todo
+  // TODO
   public static void main(String[] args) {
     BattleField battleField = new BattleField();
     List<Joueur> list = battleField.buildJoueurs("Clement;21;3;10;;Samuel;12;13;10;a;bonus;10;10;0;0;Moussa;11;2;15;;Alice;4;7;10;t;bonus;1;2;0;0");
@@ -587,6 +534,10 @@ public class BattleField {
     System.out.println(list);
   }
 
+  /**
+   * @param data
+   * @return
+   */
   private String getArgument(String[] data) {
     return StringUtils.join(ArrayUtils.subarray(data, 1, data.length));
   }
@@ -613,6 +564,22 @@ public class BattleField {
     for (int i = 0; i < maxLigne; i++) {
       for (int j = 0; j < maxColonne; j++) {
         champs[i][j] = tableau[k++];
+      }
+    }
+    carte = champs;
+  }
+
+  /**
+   * @param warzone
+   */
+  private void reduireCarte(int warzone) {
+    int ligne = Math.abs(maxLigne - warzone);
+    int colonne = Math.abs(maxColonne - warzone);
+    int[][] champs = new int[ligne][colonne];
+
+    for (int i = 0; i < ligne; i++) {
+      for (int j = 0; j < colonne; j++) {
+        champs[i][j] = carte[i][j];
       }
     }
     carte = champs;
@@ -725,6 +692,7 @@ public class BattleField {
     this.maxLigne = Math.abs(maxLigne - w);
     this.maxColonne = Math.abs(maxColonne - w);
     // TODO recalculer la carte ???
+    reduireCarte(w);
   }
 
 

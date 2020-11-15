@@ -12,6 +12,7 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.Properties;
+import java.util.Scanner;
 
 public class GameHttpClient {
 
@@ -29,22 +30,19 @@ public class GameHttpClient {
     log.info("{}", properties);
     String url = properties.getProperty(Const.SERVER_URL, "http://duffbattletank.ddns.net");
     int port = Integer.parseInt(properties.getProperty(Const.SERVER_PORT, "5000"));
-    try (Socket socket = new Socket(url, port)) {
+    try (var socket = new Socket(url, port)) {
+      var in = new Scanner(socket.getInputStream(), StandardCharsets.US_ASCII);
+      var out = new PrintWriter(new OutputStreamWriter(socket.getOutputStream(), StandardCharsets.US_ASCII), true);
 
-      InputStream input = socket.getInputStream();
-      BufferedReader reader = new BufferedReader(new InputStreamReader(input, StandardCharsets.US_ASCII));
-
-      OutputStream output = socket.getOutputStream();
-      PrintWriter responseWwriter = new PrintWriter(output, true, StandardCharsets.US_ASCII);
       Game.getInstance().init(properties);
       try {
-        while (true) {
-          String commande = reader.readLine();
+        while (in.hasNextLine()) {
+          String commande = in.nextLine();
           if (StringUtils.isNoneBlank(commande)) {
             StringBuilder response = new StringBuilder(Game.getInstance().onCommande(commande));
             if(StringUtils.isNoneBlank(response.toString())){
               response.append(Const.CRLF);
-              responseWwriter.println(response.toString());
+              out.println(response.toString());
             }
           }
         }
